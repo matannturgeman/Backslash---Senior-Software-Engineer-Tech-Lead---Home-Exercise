@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { Driver, ManagedTransaction, QueryResult } from 'neo4j-driver';
-import { NEO4J_DRIVER } from './neo4j.module.js';
+import { NEO4J_DRIVER } from './neo4j.constants.js';
 
 @Injectable()
 export class Neo4jService implements OnModuleDestroy {

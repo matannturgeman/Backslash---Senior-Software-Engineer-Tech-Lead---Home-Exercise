@@ -16,6 +16,7 @@ async function bootstrap() {
       'RESTful API for querying a microservices graph with composable filters',
     )
     .setVersion('1.0')
+    .addServer(`http://${host}:${port}/${globalPrefix}`)
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
