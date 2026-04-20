@@ -80,6 +80,20 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  // Atomically increments a counter and sets its TTL on first write.
+  // Returns the new count, or 0 when Redis is unavailable (caller should fail-open).
+  async increment(key: string, ttlSeconds: number): Promise<number> {
+    if (!this.available) return 0;
+    try {
+      const count = await this.client.incr(key);
+      if (count === 1) await this.client.expire(key, ttlSeconds);
+      return count;
+    } catch (err) {
+      this.logger.warn(`Cache increment failed for key "${key}": ${(err as Error).message}`);
+      return 0;
+    }
+  }
+
   async ping(): Promise<boolean> {
     if (!this.available) return false;
     try {

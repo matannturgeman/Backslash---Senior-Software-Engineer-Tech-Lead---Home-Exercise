@@ -6,14 +6,16 @@ import { CacheService } from './cache.service.js';
 // We intercept ioredis at the module level so CacheService never opens a real socket.
 
 const mockRedis = {
-  on:   jest.fn(),
+  on:     jest.fn(),
   connect: jest.fn().mockResolvedValue(undefined),
-  get:  jest.fn(),
-  set:  jest.fn(),
-  del:  jest.fn(),
-  scan: jest.fn(),
-  ping: jest.fn(),
-  quit: jest.fn().mockResolvedValue(undefined),
+  get:    jest.fn(),
+  set:    jest.fn(),
+  del:    jest.fn(),
+  scan:   jest.fn(),
+  ping:   jest.fn(),
+  quit:   jest.fn().mockResolvedValue(undefined),
+  incr:   jest.fn(),
+  expire: jest.fn(),
 };
 
 jest.mock('ioredis', () => {
@@ -174,6 +176,41 @@ describe('CacheService', () => {
     const val = await service.get('any');
     expect(val).toBeNull();
     expect(mockRedis.get).not.toHaveBeenCalled();
+  });
+
+  // ─── increment ───────────────────────────────────────────────────────────────
+
+  it('returns 0 from increment() when not available', async () => {
+    expect(await service.increment('ratelimit:ip', 60)).toBe(0);
+    expect(mockRedis.incr).not.toHaveBeenCalled();
+  });
+
+  it('increments and sets TTL on first write', async () => {
+    simulateConnect(service);
+    mockRedis.incr.mockResolvedValue(1);
+    mockRedis.expire.mockResolvedValue(1);
+
+    const count = await service.increment('ratelimit:ip', 60);
+
+    expect(count).toBe(1);
+    expect(mockRedis.incr).toHaveBeenCalledWith('ratelimit:ip');
+    expect(mockRedis.expire).toHaveBeenCalledWith('ratelimit:ip', 60);
+  });
+
+  it('does not reset TTL on subsequent increments', async () => {
+    simulateConnect(service);
+    mockRedis.incr.mockResolvedValue(5);
+
+    await service.increment('ratelimit:ip', 60);
+
+    expect(mockRedis.expire).not.toHaveBeenCalled();
+  });
+
+  it('returns 0 and does not throw when redis.incr rejects', async () => {
+    simulateConnect(service);
+    mockRedis.incr.mockRejectedValue(new Error('READONLY'));
+
+    await expect(service.increment('ratelimit:ip', 60)).resolves.toBe(0);
   });
 
   // ─── onModuleDestroy ──────────────────────────────────────────────────────
