@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import neo4j from 'neo4j-driver';
 import { Neo4jService } from './neo4j.service.js';
 import { NEO4J_DRIVER } from './neo4j.constants.js';
@@ -8,12 +9,13 @@ import { NEO4J_DRIVER } from './neo4j.constants.js';
   providers: [
     {
       provide: NEO4J_DRIVER,
-      useFactory: () =>
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
         neo4j.driver(
-          process.env.NEO4J_URI ?? 'bolt://localhost:7687',
+          config.get<string>('NEO4J_URI', 'bolt://localhost:7687'),
           neo4j.auth.basic(
-            process.env.NEO4J_USER ?? 'neo4j',
-            process.env.NEO4J_PASS ?? 'password',
+            config.get<string>('NEO4J_USER', 'neo4j'),
+            config.get<string>('NEO4J_PASS', 'password'),
           ),
         ),
     },

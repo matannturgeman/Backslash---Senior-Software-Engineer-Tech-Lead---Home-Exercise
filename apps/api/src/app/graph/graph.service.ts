@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Graph, GraphEdge, GraphNode } from '@libs/shared-types';
+import { CacheService } from '../cache/cache.service.js';
 import { AVAILABLE_FILTERS, filterRegistry } from '../filters/filter.registry.js';
+import { CACHE_KEY_FULL_GRAPH, CACHE_KEY_FILTERED_PREFIX } from './graph.cache-keys.js';
 import { Neo4jService } from '../neo4j/neo4j.service.js';
 
 // Neo4j path matching uses relationship-uniqueness by default (no relationship
@@ -8,14 +11,18 @@ import { Neo4jService } from '../neo4j/neo4j.service.js';
 // node uniqueness, matching the behaviour of our original DFS visited-set.
 const NODE_UNIQUENESS = 'ALL(n IN nodes(p) WHERE single(x IN nodes(p) WHERE x = n))';
 
-// Configurable via env — default covers all practical microservice path depths
-const MAX_PATH_DEPTH = Number(process.env.MAX_PATH_DEPTH ?? 20);
-
 @Injectable()
 export class GraphService {
-  constructor(private readonly neo4j: Neo4jService) {}
+  constructor(
+    private readonly neo4j: Neo4jService,
+    private readonly config: ConfigService,
+    private readonly cache: CacheService,
+  ) {}
 
   async getFullGraph(): Promise<Graph> {
+    const cached = await this.cache.get<Graph>(CACHE_KEY_FULL_GRAPH);
+    if (cached) return cached;
+
     const [nodesResult, edgesResult] = await Promise.all([
       this.neo4j.run('MATCH (n:Node) RETURN n'),
       this.neo4j.run(
@@ -23,17 +30,24 @@ export class GraphService {
       ),
     ]);
 
-    return {
+    const graph: Graph = {
       nodes: nodesResult.records.map((r) => this.mapNode(r.get('n').properties)),
       edges: edgesResult.records.map((r) => ({
         from: r.get('from') as string,
         to: r.get('to') as string,
       })),
     };
+
+    await this.cache.set(CACHE_KEY_FULL_GRAPH, graph);
+    return graph;
   }
 
   async getFilteredGraph(filterNames: string[]): Promise<Graph> {
     this.validateFilters(filterNames);
+
+    const cacheKey = `${CACHE_KEY_FILTERED_PREFIX}:${[...filterNames].sort().join(',')}`;
+    const cached = await this.cache.get<Graph>(cacheKey);
+    if (cached) return cached;
 
     const filters = filterNames.map((n) => filterRegistry[n]);
     const conditions = [
@@ -43,8 +57,9 @@ export class GraphService {
       ),
     ];
 
+    const maxDepth = this.config.get<number>('MAX_PATH_DEPTH', 20);
     const result = await this.neo4j.run(
-      `MATCH p = (start:Node)-[:CALLS*1..${MAX_PATH_DEPTH}]->(end:Node)
+      `MATCH p = (start:Node)-[:CALLS*1..${maxDepth}]->(end:Node)
        WHERE ${conditions.join(' AND ')}
        RETURN p`,
     );
@@ -68,7 +83,9 @@ export class GraphService {
       }
     }
 
-    return { nodes: [...nodeMap.values()], edges };
+    const graph: Graph = { nodes: [...nodeMap.values()], edges };
+    await this.cache.set(cacheKey, graph);
+    return graph;
   }
 
   private validateFilters(names: string[]) {

@@ -1,5 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { CacheService } from '../cache/cache.service.js';
 import { Neo4jService } from '../neo4j/neo4j.service.js';
+import { CACHE_KEY_PATTERN_ALL } from './graph.cache-keys.js';
 import { GraphLoader } from './graph.loader.js';
 
 @Injectable()
@@ -9,9 +11,14 @@ export class GraphImporter implements OnModuleInit {
   constructor(
     private readonly loader: GraphLoader,
     private readonly neo4j: Neo4jService,
+    private readonly cache: CacheService,
   ) {}
 
   async onModuleInit() {
+    await this.withRetry(() => this.initializeGraph());
+  }
+
+  private async initializeGraph() {
     const hash = this.loader.fileHash;
 
     const stored = await this.neo4j.run(
@@ -25,9 +32,50 @@ export class GraphImporter implements OnModuleInit {
 
     this.logger.log('Seeding Neo4j...');
     await this.seed();
+    await this.invalidateCache();
     this.logger.log(
       `Seeded ${this.loader.nodes.size} nodes, ${this.loader.edges.length} edges`,
     );
+  }
+
+  private async withRetry(
+    fn: () => Promise<void>,
+    attempts = 4,
+    delayMs = 2000,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        // Only retry transient connectivity errors — fail fast on logic/query bugs
+        if (!GraphImporter.isTransientError(err) || attempt === attempts) {
+          this.logger.error(
+            `Neo4j unavailable after ${attempts} attempts — shutting down`,
+          );
+          throw err;
+        }
+        this.logger.warn(
+          `Neo4j unavailable (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms…`,
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+
+  private static isTransientError(err: unknown): boolean {
+    const code =
+      err instanceof Error && 'code' in err
+        ? (err as { code: string }).code
+        : '';
+    // Neo4j ServiceUnavailable / SessionExpired — driver-level transient errors
+    if (code === 'ServiceUnavailable' || code === 'SessionExpired') return true;
+    // Node.js network errors before Neo4j has started
+    return ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT'].includes(code);
+  }
+
+  private async invalidateCache() {
+    await this.cache.invalidatePattern(CACHE_KEY_PATTERN_ALL);
+    this.logger.log('Graph cache invalidated');
   }
 
   private async seed() {
