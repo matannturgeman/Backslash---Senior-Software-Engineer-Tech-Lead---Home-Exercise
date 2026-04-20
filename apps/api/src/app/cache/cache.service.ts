@@ -80,6 +80,18 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  async ping(): Promise<boolean> {
+    if (!this.available) return false;
+    try {
+      await this.client.ping();
+      return true;
+    } catch (err) {
+      this.logger.warn(`Redis ping failed — cache disabled: ${(err as Error).message}`);
+      this.available = false;
+      return false;
+    }
+  }
+
   async onModuleDestroy() {
     await this.client.quit();
   }

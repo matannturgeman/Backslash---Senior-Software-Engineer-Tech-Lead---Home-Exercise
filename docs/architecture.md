@@ -4,94 +4,186 @@
 
 ```
 apps/api/src/app/
-  graph/
-    graph.module.ts           ← NestJS module
-    graph.controller.ts       ← REST endpoints: GET /graph, GET /graph/routes
-    graph.service.ts          ← Orchestrates loader + pathFinder + filters
-    graph.loader.ts           ← Reads & parses JSON, normalizes edges
-    graph.path-finder.ts      ← DFS: finds all simple paths in the graph
-  filters/
-    filter.interface.ts       ← FilterFn type definition
-    filter.registry.ts        ← Map of name → FilterFn
-    public-start.filter.ts
-    sink-end.filter.ts
-    has-vulnerability.filter.ts
+├── app.module.ts               ← Root module — imports all feature modules
+│
+├── graph/
+│   ├── graph.module.ts         ← Feature module (imports Neo4j, Cache, Config)
+│   ├── graph.controller.ts     ← REST: GET /graph, /graph/filters, /graph/routes
+│   ├── graph.service.ts        ← Cypher query builder + result deduplication
+│   ├── graph.loader.ts         ← JSON parse, Zod validation, edge normalization
+│   ├── graph.importer.ts       ← Neo4j seeding on startup (hash-optimized, retry)
+│   ├── graph.cache-keys.ts     ← Cache key constants
+│   └── graph.dto.ts            ← Swagger response DTOs
+│
+├── filters/
+│   └── filter.registry.ts      ← Named Cypher WHERE fragments
+│
+├── cache/
+│   └── cache.service.ts        ← Redis cache-aside (graceful degradation)
+│
+├── neo4j/
+│   ├── neo4j.module.ts         ← Global provider of Neo4j Driver
+│   ├── neo4j.service.ts        ← Session-level query runner
+│   └── neo4j.constants.ts      ← DI token: NEO4J_DRIVER
+│
+└── health/
+    ├── health.module.ts
+    └── health.controller.ts    ← GET /health (Neo4j + Redis liveness)
 
-libs/shared/types/
-  graph.types.ts              ← GraphNode, GraphEdge, Route, Graph interfaces
+libs/shared/types/src/lib/types.ts
+    GraphNode, GraphEdge, Graph, CypherFilter, Vulnerability
 ```
 
 ---
 
-## Data Flow
+## High-Level Data Flow
 
 ```
-JSON file
-   │
-   ▼
-GraphLoader          — parses nodes[], normalizes edges to {from, to}[]
-   │
-   ▼
-GraphService         — builds adjacency map {nodeName → [neighborNames]}
-   │
-   ├─── GET /graph   — returns all nodes + edges directly
-   │
-   └─── GET /graph/routes?filters=...
-           │
-           ▼
-        PathFinder   — DFS to find all simple paths
-           │
-           ▼
-        FilterRegistry.resolve(filterNames) → FilterFn[]
-           │
-           ▼
-        Apply filters (AND) to each path
-           │
-           ▼
-        Collect union of nodes + edges from matching paths
-           │
-           ▼
-        Return subgraph { nodes[], edges[] }
+train-ticket.json (bundled asset)
+       │
+       ▼
+ GraphLoader (onModuleInit)
+   - Read file, parse JSON
+   - Validate with Zod rawGraphSchema
+   - Normalize edges: to: string | string[] → flat GraphEdge[]
+   - Compute SHA-256 hash of file contents
+       │
+       ▼
+ GraphImporter (onModuleInit, retries up to 4×)
+   - Query Neo4j for GraphMeta.hash
+   - If hash unchanged → skip seed (no-op)
+   - If changed / first run:
+       └─ WRITE TRANSACTION:
+           1. Delete all existing nodes + relationships
+           2. CREATE nodes from loader data
+           3. MATCH + CREATE [:CALLS] relationships
+           4. Store new hash in GraphMeta
+       └─ Invalidate Redis cache (pattern delete)
+       │
+       ▼
+ Neo4j graph is ready for queries
 ```
 
 ---
 
-## Filter System Design
+## Request Flow: `GET /graph/routes?filters=publicStart,sinkEnd`
+
+```
+HTTP Request
+    │
+    ▼
+GraphController.getRoutes(filtersParam)
+    │  Parse & trim comma-separated names
+    ▼
+GraphService.getFilteredGraph(filterNames)
+    │
+    ├─ Validate filter names → unknown names → 400
+    │
+    ├─ Build cache key: graph:filtered:hasVulnerability,publicStart,sinkEnd (sorted)
+    │
+    ├─ CacheService.get(key) ──► Redis HIT → return cached graph
+    │                                 │
+    │                           Redis MISS ↓
+    │
+    ├─ Build Cypher WHERE conditions from filter registry:
+    │    startWhere  │ "start.publicExposed = true"
+    │    endWhere    │ "end.kind IN ['rds', 'sql']"
+    │    pathWhere   │ (any vulnerability filters)
+    │    + NODE_UNIQUENESS clause (no repeated nodes per path)
+    │
+    ├─ Neo4jService.run(cypher, params)
+    │    MATCH p = (start:Node)-[:CALLS*1..MAX_PATH_DEPTH]->(end:Node)
+    │    WHERE <conditions>
+    │    RETURN p LIMIT MAX_RESULT_PATHS
+    │
+    ├─ Deduplicate nodes + edges from all returned path segments
+    │
+    ├─ Guard: nodeCount > MAX_RESPONSE_NODES → 400 "add more filters"
+    │
+    ├─ CacheService.set(key, graph, TTL)
+    │
+    └─ Return { nodes[], edges[] }
+```
+
+---
+
+## Filter System
+
+Filters are Cypher WHERE fragments, not JS predicates. This means filtering happens inside the database — no paths are loaded into memory only to be discarded.
 
 ```ts
-// filter.interface.ts
-type FilterFn = (path: GraphNode[]) => boolean;
+// libs/shared/types
+interface CypherFilter {
+  startWhere?: string;   // condition on the path's start node
+  endWhere?: string;     // condition on the path's end node
+  pathWhere?: string;    // condition on the path or any node in it
+}
 
-// filter.registry.ts
-const registry: Record<string, FilterFn> = {
-  publicStart: (path) => path[0]?.publicExposed === true,
-  sinkEnd:     (path) => ["rds", "sql"].includes(path.at(-1)?.kind),
-  hasVulnerability: (path) => path.some(n => n.vulnerabilities?.length > 0),
+// apps/api/src/app/filters/filter.registry.ts
+export const filterRegistry: Record<string, CypherFilter> = {
+  publicStart:      { startWhere: 'start.publicExposed = true' },
+  sinkEnd:          { endWhere:   'end.kind IN ["rds", "sql"]' },
+  hasVulnerability: { pathWhere:  'any(n IN nodes(p) WHERE n.hasVulnerability = true)' },
 };
-
-// To add a new filter: add one entry to registry. That's it.
 ```
 
-Filters compose via AND:
-```ts
-const composed = (path) => filters.every(fn => fn(path));
-```
+Filters compose by **AND** — all `startWhere`, `endWhere`, and `pathWhere` clauses from every selected filter are joined with `AND` into a single Cypher `WHERE`.
 
 ---
 
-## Path Finding
+## Caching Layer
 
-Uses **iterative DFS** with a visited set to find all **simple paths** (no repeated nodes) in the directed graph.
+**Pattern:** Cache-aside (read-through / write-on-miss)
 
-- Graph size (~40 nodes, ~100 edges) makes full path enumeration feasible without optimization.
-- Paths are computed on each request (graph is static/in-memory, so this is fast).
+```
+Request
+  │
+  ├─ CacheService.get(key)
+  │    Redis available? → GET key → HIT → return
+  │                               → MISS ↓
+  │
+  ├─ Query Neo4j
+  │
+  └─ CacheService.set(key, value, ttl)
+       Redis available? → SET key EX ttl
+       Redis unavailable? → log warning, continue (no error thrown)
+```
+
+**Graceful Degradation:** If Redis is down, `available = false` and all cache operations are silently skipped. The API continues functioning with direct Neo4j queries.
+
+**Invalidation:** On graph re-seed, all `graph:*` keys are deleted via `SCAN` pattern match.
 
 ---
 
-## Assumptions
+## Neo4j Schema
 
-1. **"Route" = full directed path**, not just a single edge. This aligns with the filter semantics (start node, end node, intermediate nodes).
-2. **Sink** = any node with `kind: "rds"` or `kind: "sql"`. The `sqs` kind is treated as a message broker, not a sink, unless specified otherwise.
-3. **Graph is static** — loaded once at startup from the JSON file. No persistence layer needed.
-4. **Filter logic is AND** — all specified filters must match a route for it to be included.
-5. **Subgraph response** — the `/routes` endpoint returns only nodes and edges that appear in at least one matching route, not the full route list. This is the most useful shape for client-side graph rendering.
+```
+Nodes:  (:Node { name, kind, publicExposed, hasVulnerability, language, path, ... })
+Rels:   (:Node)-[:CALLS]->(:Node)
+Meta:   (:GraphMeta { hash })  ← seed optimization
+Index:  CREATE CONSTRAINT ON (n:Node) ASSERT n.name IS UNIQUE
+```
+
+**Node Uniqueness in Paths:** Cypher `[:CALLS*]` uses relationship-uniqueness by default (no repeated edges), but nodes can repeat. The query adds:
+```cypher
+ALL(n IN nodes(p) WHERE single(x IN nodes(p) WHERE x = n))
+```
+This enforces simple paths (no repeated nodes), matching DFS visited-set semantics.
+
+---
+
+## Configuration
+
+All runtime config is resolved via NestJS `ConfigService` from environment variables. See [infrastructure.md](./infrastructure.md) for full variable list.
+
+---
+
+## Testing Strategy
+
+| Layer | Tool | Count |
+|---|---|---|
+| Unit | Jest (ts-jest) | 16 tests |
+| E2E | Jest + Testcontainers (real Neo4j + Redis) | 20 tests |
+
+Unit tests cover: `GraphLoader`, `GraphService` (Cypher composition), `FilterRegistry`.
+E2E tests cover: all 4 endpoints, error cases, filter correctness against real data.

@@ -1,6 +1,21 @@
-# Filters
+# Filter System
 
-Filters are the core extensibility mechanism of the query engine. Each filter is a pure function that takes a route (array of nodes) and returns `true` if the route matches.
+Filters are the core extensibility mechanism of the query engine. Each filter is a named set of **Cypher WHERE fragments** that constrain which paths Neo4j returns. Filtering happens inside the database — no paths are materialised in Node.js only to be discarded.
+
+---
+
+## CypherFilter Type
+
+```ts
+// libs/shared/types/src/lib/types.ts
+interface CypherFilter {
+  startWhere?: string;  // condition evaluated on the path's start node (alias: `start`)
+  endWhere?: string;    // condition evaluated on the path's end node (alias: `end`)
+  pathWhere?: string;   // condition evaluated on the full path variable `p`
+}
+```
+
+All fragments from all selected filters are collected and joined into a single Cypher `WHERE` clause with `AND`.
 
 ---
 
@@ -8,9 +23,9 @@ Filters are the core extensibility mechanism of the query engine. Each filter is
 
 ### `publicStart`
 
-**Description:** Keeps routes whose first node is publicly exposed (internet-facing).
+**Cypher fragment:** `start.publicExposed = true`
 
-**Logic:** `path[0].publicExposed === true`
+**Effect:** Keeps paths whose **first node** is internet-facing.
 
 **Use case:** Find all attack surfaces reachable from the internet.
 
@@ -18,9 +33,11 @@ Filters are the core extensibility mechanism of the query engine. Each filter is
 
 ### `sinkEnd`
 
-**Description:** Keeps routes whose last node is a data sink (RDS or SQL database).
+**Cypher fragment:** `end.kind IN ["rds", "sql"]`
 
-**Logic:** `["rds", "sql"].includes(path.at(-1)?.kind)`
+**Effect:** Keeps paths whose **last node** is a data store (Postgres, MySQL, SQL).
+
+> Note: `sqs` (message queues) are treated as intermediaries, not sinks.
 
 **Use case:** Find all paths that reach a database — useful for data exfiltration risk analysis.
 
@@ -28,50 +45,66 @@ Filters are the core extensibility mechanism of the query engine. Each filter is
 
 ### `hasVulnerability`
 
-**Description:** Keeps routes that pass through at least one node with a known vulnerability.
+**Cypher fragment:** `any(n IN nodes(p) WHERE n.hasVulnerability = true)`
 
-**Logic:** `path.some(node => node.vulnerabilities?.length > 0)`
+**Effect:** Keeps paths where **at least one node** has a known vulnerability.
 
-**Use case:** Find all routes that touch vulnerable services.
+**Use case:** Find all routes that touch a vulnerable service.
 
 ---
 
 ## Combining Filters
 
-Filters are specified as a comma-separated list in the `filters` query param.
-All specified filters are applied with **AND logic** — a route must satisfy every filter to be included.
+Specify multiple filters as a comma-separated `filters` query param. All selected filters are applied with **AND logic** — a path must satisfy every filter to be included.
 
-**Example — routes from internet to database through a vulnerability:**
+**Example — paths from internet to a database through a vulnerable service:**
 ```
 GET /api/graph/routes?filters=publicStart,sinkEnd,hasVulnerability
+```
+
+This generates a single Cypher query:
+```cypher
+MATCH p = (start:Node)-[:CALLS*1..20]->(end:Node)
+WHERE
+  ALL(n IN nodes(p) WHERE single(x IN nodes(p) WHERE x = n))  -- no repeated nodes
+  AND start.publicExposed = true
+  AND end.kind IN ["rds", "sql"]
+  AND any(n IN nodes(p) WHERE n.hasVulnerability = true)
+RETURN p LIMIT 10000
 ```
 
 ---
 
 ## Adding a New Filter
 
-1. Create `apps/api/src/app/filters/my-filter.filter.ts`:
+1. Add an entry to `apps/api/src/app/filters/filter.registry.ts`:
 
 ```ts
-import { FilterFn } from './filter.interface';
+export const filterRegistry: Record<string, CypherFilter> = {
+  publicStart:      { startWhere: 'start.publicExposed = true' },
+  sinkEnd:          { endWhere:   'end.kind IN ["rds", "sql"]' },
+  hasVulnerability: { pathWhere:  'any(n IN nodes(p) WHERE n.hasVulnerability = true)' },
 
-export const myFilter: FilterFn = (path) => {
-  // your logic here
-  return path.length > 3;
+  // New filter: paths longer than 3 hops
+  deepPath: { pathWhere: 'length(p) > 3' },
 };
 ```
 
-2. Register it in `filter.registry.ts`:
+2. That's it. No other changes needed. The new filter is:
+   - Available via `?filters=deepPath`
+   - Listed in `GET /graph/filters`
+   - Validated against the registry (unknown names → 400)
+   - Included in error messages that list available filters
 
-```ts
-import { myFilter } from './my-filter.filter';
+---
 
-export const filterRegistry: Record<string, FilterFn> = {
-  publicStart,
-  sinkEnd,
-  hasVulnerability,
-  longRoute: myFilter,   // ← add this line
-};
-```
+## Result-Set Protection
 
-3. It's now available via `?filters=longRoute`. No other changes needed.
+Two safety limits apply after filtering:
+
+| Limit | Default | Env var | Effect |
+|---|---|---|---|
+| `MAX_RESULT_PATHS` | 10,000 | `MAX_RESULT_PATHS` | Cypher `LIMIT` — caps rows returned from Neo4j |
+| `MAX_RESPONSE_NODES` | 5,000 | `MAX_RESPONSE_NODES` | Post-dedup node count check — returns 400 if exceeded |
+
+If `MAX_RESPONSE_NODES` is exceeded, the response tells the caller to add more filters.

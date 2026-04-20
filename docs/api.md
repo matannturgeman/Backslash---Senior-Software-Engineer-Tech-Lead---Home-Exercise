@@ -2,17 +2,17 @@
 
 Base URL: `http://localhost:3000/api`
 
-Interactive docs (Swagger UI): `http://localhost:3000/api`
+Interactive Swagger UI: `http://localhost:3000/docs`
 
 ---
 
-## Endpoints
+## `GET /graph`
 
-### `GET /graph`
+Returns the **full graph** — all 46 nodes and 98 edges from the loaded dataset.
 
-Returns the **full graph** — all nodes and all edges.
+**Cache key:** `graph:full`
 
-**Response:**
+**Response `200 OK`:**
 ```json
 {
   "nodes": [
@@ -38,53 +38,94 @@ Returns the **full graph** — all nodes and all edges.
 
 ---
 
-### `GET /graph/routes`
+## `GET /graph/filters`
 
-Returns a **filtered subgraph** — only nodes and edges that participate in at least one route matching all specified filters.
+Returns the **list of available filter names** that can be passed to `/graph/routes`.
 
-**Query Parameters:**
+**Response `200 OK`:**
+```json
+{
+  "filters": ["publicStart", "sinkEnd", "hasVulnerability"]
+}
+```
 
-| Param | Type | Description |
-|---|---|---|
-| `filters` | `string` (comma-separated) | One or more filter names to apply |
+---
 
-**Available filter names:**
+## `GET /graph/routes`
 
-| Value | Description |
-|---|---|
-| `publicStart` | Route starts at a `publicExposed: true` node |
-| `sinkEnd` | Route ends at an `rds` or `sql` node |
-| `hasVulnerability` | Route passes through a node with at least one vulnerability |
+Returns a **filtered subgraph** — the union of all nodes and edges that appear in at least one path matching **all** specified filters.
 
-**Example requests:**
+### Query Parameters
+
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `filters` | `string` (comma-separated) | Yes | One or more filter names |
+
+### Example Requests
 
 ```
 GET /api/graph/routes?filters=publicStart
 GET /api/graph/routes?filters=sinkEnd
+GET /api/graph/routes?filters=hasVulnerability
 GET /api/graph/routes?filters=publicStart,sinkEnd
 GET /api/graph/routes?filters=publicStart,sinkEnd,hasVulnerability
 ```
 
-**Response** (same shape as `/graph`, but only matching nodes and edges):
+**Cache key:** `graph:filtered:<sorted-filter-names>` (e.g. `graph:filtered:publicStart,sinkEnd`)
+
+**Response `200 OK`:** Same shape as `GET /graph`, but only matching nodes and edges.
+
+### Error Responses
+
+| Status | Trigger | Body |
+|---|---|---|
+| `400 Bad Request` | `filters` param missing or empty | `{ "message": "filters query param is required" }` |
+| `400 Bad Request` | Unknown filter name | `{ "message": "Unknown filters: [foo]. Available: publicStart, sinkEnd, hasVulnerability" }` |
+| `400 Bad Request` | Result exceeds `MAX_RESPONSE_NODES` | `{ "message": "Result too large (N nodes). Add more filters to narrow the query." }` |
+
+---
+
+## `GET /health`
+
+Liveness probe — checks Neo4j and Redis connectivity.
+
+**Response `200 OK` (all healthy):**
 ```json
 {
-  "nodes": [...],
-  "edges": [...]
+  "status": "ok",
+  "details": {
+    "neo4j": { "status": "up" },
+    "redis": { "status": "up" }
+  }
 }
 ```
 
-**Error responses:**
+**Response `200 OK` (Redis degraded — API still functional):**
+```json
+{
+  "status": "ok",
+  "details": {
+    "neo4j": { "status": "up" },
+    "redis": { "status": "down" }
+  }
+}
+```
 
-| Status | Reason |
-|---|---|
-| `400 Bad Request` | Unknown filter name provided |
-| `422 Unprocessable Entity` | `filters` param is missing or empty |
+**Response `503 Service Unavailable` (Neo4j down):**
+```json
+{
+  "status": "error",
+  "details": {
+    "neo4j": { "status": "down", "error": "Connection refused" }
+  }
+}
+```
 
 ---
 
 ## Response Shape — Graph Object
 
-Both endpoints return the same `Graph` shape, usable directly by client-side graph rendering libraries (e.g., React Flow, D3, Cytoscape).
+Both `/graph` and `/graph/routes` return the same `Graph` shape, directly consumable by graph rendering libraries (React Flow, D3, Cytoscape).
 
 ```ts
 interface Graph {
@@ -111,6 +152,6 @@ interface Vulnerability {
   file: string;
   severity: "low" | "medium" | "high" | "critical";
   message: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;  // e.g. { cwe: "CWE-22: Path Traversal" }
 }
 ```

@@ -4,6 +4,7 @@ import type { Graph, GraphEdge, GraphNode } from '@libs/shared-types';
 import { CacheService } from '../cache/cache.service.js';
 import { AVAILABLE_FILTERS, filterRegistry } from '../filters/filter.registry.js';
 import { CACHE_KEY_FULL_GRAPH, CACHE_KEY_FILTERED_PREFIX } from './graph.cache-keys.js';
+import { graphNodeSchema } from './graph.loader.js';
 import { Neo4jService } from '../neo4j/neo4j.service.js';
 
 // Neo4j path matching uses relationship-uniqueness by default (no relationship
@@ -57,11 +58,13 @@ export class GraphService {
       ),
     ];
 
-    const maxDepth = this.config.get<number>('MAX_PATH_DEPTH', 20);
+    const maxDepth = this.positiveInt('MAX_PATH_DEPTH', 20);
+    const maxPaths = this.positiveInt('MAX_RESULT_PATHS', 10_000);
+    const maxNodes = this.positiveInt('MAX_RESPONSE_NODES', 5_000);
     const result = await this.neo4j.run(
       `MATCH p = (start:Node)-[:CALLS*1..${maxDepth}]->(end:Node)
        WHERE ${conditions.join(' AND ')}
-       RETURN p`,
+       RETURN p LIMIT ${maxPaths}`,
     );
 
     const nodeMap = new Map<string, GraphNode>();
@@ -75,6 +78,11 @@ export class GraphService {
         const to = this.mapNode(segment.end.properties);
         nodeMap.set(from.name, from);
         nodeMap.set(to.name, to);
+        if (nodeMap.size > maxNodes) {
+          throw new BadRequestException(
+            `Result exceeds ${maxNodes} nodes — add more filters to narrow the query.`,
+          );
+        }
         const key = `${from.name}→${to.name}`;
         if (!edgeSet.has(key)) {
           edgeSet.add(key);
@@ -97,19 +105,21 @@ export class GraphService {
     }
   }
 
+  // Falls back to defaultValue when the env var is missing, non-numeric, or ≤ 0.
+  private positiveInt(key: string, defaultValue: number): number {
+    const v = this.config.get<number>(key, defaultValue);
+    return Number.isInteger(v) && v > 0 ? v : defaultValue;
+  }
+
   private mapNode(props: Record<string, unknown>): GraphNode {
-    return {
-      name:            props['name'] as string,
-      kind:            props['kind'] as GraphNode['kind'],
-      publicExposed:   props['publicExposed'] as boolean | undefined,
+    return graphNodeSchema.parse({
+      ...props,
       vulnerabilities: props['vulnerabilities']
         ? JSON.parse(props['vulnerabilities'] as string)
         : undefined,
-      language:        props['language'] as string | undefined,
-      path:            props['path'] as string | undefined,
-      metadata:        props['metadata']
+      metadata: props['metadata']
         ? JSON.parse(props['metadata'] as string)
         : undefined,
-    };
+    });
   }
 }

@@ -79,12 +79,13 @@ export class GraphImporter implements OnModuleInit {
   }
 
   private async seed() {
-    // Warn about edges referencing nodes that don't exist in the JSON
     const nodeNames = this.loader.nodes;
-    for (const edge of this.loader.edges) {
-      if (!nodeNames.has(edge.to)) {
-        this.logger.warn(`Edge target "${edge.to}" not found in nodes — skipping`);
-      }
+    const dangling = this.loader.edges.filter(e => !nodeNames.has(e.to));
+    if (dangling.length > 0) {
+      throw new Error(
+        `Seed aborted — ${dangling.length} edge(s) reference unknown nodes: ` +
+        dangling.map(e => `"${e.from}" → "${e.to}"`).join(', ')
+      );
     }
 
     await this.neo4j.writeTransaction(async (tx) => {
@@ -129,9 +130,9 @@ export class GraphImporter implements OnModuleInit {
       });
     });
 
-    // Index created outside transaction (DDL in Neo4j can't run inside write tx)
+    // Constraint created outside transaction (DDL in Neo4j can't run inside write tx)
     await this.neo4j.run(
-      'CREATE INDEX node_name IF NOT EXISTS FOR (n:Node) ON (n.name)',
+      'CREATE CONSTRAINT node_name_unique IF NOT EXISTS FOR (n:Node) REQUIRE n.name IS UNIQUE',
     );
   }
 }

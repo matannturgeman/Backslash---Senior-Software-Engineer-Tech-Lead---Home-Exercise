@@ -9,6 +9,8 @@
   },
   "private": true,
   "devDependencies": {
+    "@testcontainers/neo4j": "^10.0.0",
+    "@testcontainers/redis": "^10.0.0",
     "@eslint/js": "9.8.0",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "11.1.17",

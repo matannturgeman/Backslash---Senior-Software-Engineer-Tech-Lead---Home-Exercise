@@ -14,7 +14,7 @@ const vulnerabilitySchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-const graphNodeSchema = z.object({
+export const graphNodeSchema = z.object({
   name: z.string().min(1, 'Node name must not be empty'),
   kind: z.enum(['service', 'rds', 'sqs', 'sql']),
   publicExposed: z.boolean().optional(),
