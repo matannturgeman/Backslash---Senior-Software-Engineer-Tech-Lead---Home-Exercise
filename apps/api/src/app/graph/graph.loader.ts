@@ -11,7 +11,7 @@ const vulnerabilitySchema = z.object({
   file: z.string(),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   message: z.string(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const graphNodeSchema = z.object({
@@ -21,7 +21,7 @@ const graphNodeSchema = z.object({
   vulnerabilities: z.array(vulnerabilitySchema).optional(),
   language: z.string().optional(),
   path: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const rawEdgeSchema = z.object({
