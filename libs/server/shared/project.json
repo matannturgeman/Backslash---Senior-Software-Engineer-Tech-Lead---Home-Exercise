@@ -1,0 +1,19 @@
+{
+  "name": "server-shared",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/server/shared/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:shared"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/server-shared",
+        "main": "libs/server/shared/src/index.ts",
+        "tsConfig": "libs/server/shared/tsconfig.lib.json",
+        "assets": ["libs/server/shared/*.md"]
+      }
+    }
+  }
+}

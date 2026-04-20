@@ -1,0 +1,58 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./libs/server/data-access"
+    },
+    {
+      "path": "./libs/shared/validation-schemas"
+    },
+    {
+      "path": "./libs/shared/types"
+    },
+    {
+      "path": "./libs/shared/shared"
+    },
+    {
+      "path": "./apps/api"
+    },
+    {
+      "path": "./apps/client"
+    },
+    {
+      "path": "./apps/api-e2e"
+    },
+    {
+      "path": "./apps/client-e2e"
+    },
+    {
+      "path": "./libs/client/server-communication"
+    },
+    {
+      "path": "./libs/client/loggedin-user"
+    },
+    {
+      "path": "./libs/client/shared"
+    },
+    {
+      "path": "./libs/server/shared"
+    },
+    {
+      "path": "./libs/client/store"
+    },
+    {
+      "path": "./libs/server/auth"
+    },
+    {
+      "path": "./libs/server/user"
+    },
+    {
+      "path": "./libs/shared/dto"
+    },
+    {
+      "path": "./libs/client/ui"
+    }
+  ]
+}

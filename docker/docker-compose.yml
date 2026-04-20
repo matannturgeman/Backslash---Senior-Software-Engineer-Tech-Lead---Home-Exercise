@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: nx_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: nxuser
+      POSTGRES_PASSWORD: nxpass
+      POSTGRES_DB: nxdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    container_name: nx_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: nx_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  mongo_data:

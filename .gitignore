@@ -1,0 +1,11 @@
+node_modules/
+.claude/
+dist/
+coverage/
+.nx/
+tmp/
+*.env
+.env.local
+
+# Original assignment files (not part of deliverable)
+requirments/

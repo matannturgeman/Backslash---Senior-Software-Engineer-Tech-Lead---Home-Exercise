@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "emitDeclarationOnly": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "jest.config.ts",
+    "jest.config.cts",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts"
+  ],
+  "references": [
+    {
+      "path": "../../libs/server/data-access/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/server/user/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/server/auth/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/shared/dto/tsconfig.lib.json"
+    }
+  ]
+}

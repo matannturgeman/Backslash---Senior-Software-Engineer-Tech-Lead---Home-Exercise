@@ -1,0 +1,16 @@
+{
+  "name": "client-ui",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/client/ui/src",
+  "projectType": "library",
+  "tags": ["scope:client", "type:ui"],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/client-ui"
+      }
+    }
+  }
+}

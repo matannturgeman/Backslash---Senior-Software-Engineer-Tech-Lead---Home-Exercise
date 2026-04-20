@@ -1,0 +1,19 @@
+{
+  "name": "server-user",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/server/user/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:lib"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/server-user",
+        "main": "libs/server/user/src/index.ts",
+        "tsConfig": "libs/server/user/tsconfig.lib.json",
+        "assets": ["libs/server/user/*.md"]
+      }
+    }
+  }
+}

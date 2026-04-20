@@ -1,0 +1,60 @@
+{
+  "name": "api",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "webpack --mode production",
+        "cwd": "apps/api"
+      },
+      "configurations": {
+        "development": {
+          "command": "webpack --mode development --watch",
+          "cwd": "apps/api"
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "defaultConfiguration": "development",
+      "options": {
+        "command": "npm run build:api && node dist/api/main.js",
+        "cwd": ".",
+        "runBuildTargetDependencies": true
+      },
+      "configurations": {
+        "development": {},
+        "production": {}
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node dist/api/main.js --watch",
+        "cwd": "."
+      },
+      "configurations": {
+        "production": {},
+        "development": {}
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["apps/api/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "options": {
+        "jestConfig": "apps/api/jest.config.cts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}
