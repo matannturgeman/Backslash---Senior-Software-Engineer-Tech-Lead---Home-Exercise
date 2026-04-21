@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard, ThrottlerStorage } from '@nestjs/throttler';
 import { CacheModule } from './cache/cache.module.js';
 import { Neo4jModule } from './neo4j/neo4j.module.js';
 import { GraphModule } from './graph/graph.module.js';
 import { HealthModule } from './health/health.module.js';
-import { RateLimitGuard } from './rate-limit/rate-limit.guard.js';
+import { ThrottlerStorageRedisService } from './rate-limit/throttler-storage.service.js';
 
 @Module({
   imports: [
@@ -14,9 +15,22 @@ import { RateLimitGuard } from './rate-limit/rate-limit.guard.js';
     Neo4jModule,
     GraphModule,
     HealthModule,
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            ttl:   config.get<number>('RATE_LIMIT_WINDOW_MS', 60_000),
+            limit: config.get<number>('RATE_LIMIT_MAX',       60),
+          },
+        ],
+      }),
+    }),
   ],
   providers: [
-    { provide: APP_GUARD, useClass: RateLimitGuard },
+    ThrottlerStorageRedisService,
+    { provide: ThrottlerStorage,  useExisting: ThrottlerStorageRedisService },
+    { provide: APP_GUARD,         useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
