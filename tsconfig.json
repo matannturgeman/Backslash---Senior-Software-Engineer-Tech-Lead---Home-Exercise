@@ -4,9 +4,6 @@
   "files": [],
   "references": [
     {
-      "path": "./libs/server/data-access"
-    },
-    {
       "path": "./libs/shared/validation-schemas"
     },
     {
@@ -37,16 +34,7 @@
       "path": "./libs/client/shared"
     },
     {
-      "path": "./libs/server/shared"
-    },
-    {
       "path": "./libs/client/store"
-    },
-    {
-      "path": "./libs/server/auth"
-    },
-    {
-      "path": "./libs/server/user"
     },
     {
       "path": "./libs/shared/dto"

@@ -22,10 +22,6 @@
     "strict": true,
     "target": "es2022",
     "paths": {
-      "@libs/server-auth": ["libs/server/auth/src/index.ts"],
-      "@libs/server-data-access": ["libs/server/data-access/src/index.ts"],
-      "@libs/server-user": ["libs/server/user/src/index.ts"],
-      "@libs/server-shared": ["libs/server/shared/src/index.ts"],
       "@libs/client-store": ["libs/client/store/src/index.ts"],
       "@libs/client-server-communication": [
         "libs/client/server-communication/src/index.ts",
