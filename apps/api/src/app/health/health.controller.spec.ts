@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { HealthController } from './health.controller.js';
-import { Neo4jService } from '../neo4j/neo4j.service.js';
-import { CacheService } from '../cache/cache.service.js';
+import { GRAPH_REPOSITORY } from '../neo4j/neo4j.interface.js';
+import { CACHE_SERVICE } from '@libs/server-cache';
 
 const mockNeo4j = { run: jest.fn() };
 const mockCache = { ping: jest.fn() };
@@ -15,8 +15,8 @@ describe('HealthController', () => {
     const module = await Test.createTestingModule({
       controllers: [HealthController],
       providers: [
-        { provide: Neo4jService, useValue: mockNeo4j },
-        { provide: CacheService, useValue: mockCache },
+        { provide: GRAPH_REPOSITORY, useValue: mockNeo4j },
+        { provide: CACHE_SERVICE,    useValue: mockCache },
       ],
     }).compile();
     controller = module.get(HealthController);
