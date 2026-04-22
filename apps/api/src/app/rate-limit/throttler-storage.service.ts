@@ -18,7 +18,6 @@ export class ThrottlerStorageRedisService implements ThrottlerStorage {
     ttl: number,
     limit: number,
     blockDuration: number,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const ttlSec = Math.max(1, Math.ceil(ttl / 1000));
