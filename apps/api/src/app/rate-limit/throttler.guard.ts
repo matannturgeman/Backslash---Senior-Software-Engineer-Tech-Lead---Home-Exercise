@@ -9,11 +9,8 @@ import {
   InjectThrottlerStorage,
 } from '@nestjs/throttler';
 
-/**
- * Extends ThrottlerGuard to disable rate limiting outside of production.
- * Set NODE_ENV=production to enable throttling.
- * isProduction is cached at construction time — NODE_ENV never changes at runtime.
- */
+// Throttling only applies in production — isProduction cached at construction,
+// so non-production requests bypass Redis entirely.
 @Injectable()
 export class AppThrottlerGuard extends ThrottlerGuard {
   private readonly isProduction: boolean;
