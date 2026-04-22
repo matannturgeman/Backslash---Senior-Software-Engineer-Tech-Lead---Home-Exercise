@@ -1,0 +1,19 @@
+{
+  "name": "server-graph",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/server/graph/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/server-graph",
+        "main": "libs/server/graph/src/index.ts",
+        "tsConfig": "libs/server/graph/tsconfig.lib.json",
+        "assets": []
+      }
+    }
+  }
+}

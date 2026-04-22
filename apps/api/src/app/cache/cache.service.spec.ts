@@ -25,7 +25,7 @@ jest.mock('ioredis', () => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Makes CacheService believe Redis is connected so available = true. */
-function simulateConnect(service: CacheService) {
+function simulateConnect() {
   // Find the 'connect' handler registered via on() and call it
   const connectCall = mockRedis.on.mock.calls.find(([event]: [string]) => event === 'connect');
   if (connectCall) (connectCall[1] as () => void)();
@@ -72,7 +72,7 @@ describe('CacheService', () => {
   // ─── get ──────────────────────────────────────────────────────────────────
 
   it('returns parsed JSON from redis on cache hit', async () => {
-    simulateConnect(service);
+    simulateConnect();
     const payload = { nodes: [], edges: [] };
     mockRedis.get.mockResolvedValue(JSON.stringify(payload));
 
@@ -81,14 +81,14 @@ describe('CacheService', () => {
   });
 
   it('returns null on cache miss', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.get.mockResolvedValue(null);
 
     expect(await service.get('missing')).toBeNull();
   });
 
   it('returns null and does not throw when redis.get rejects', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.get.mockRejectedValue(new Error('redis error'));
 
     await expect(service.get('key')).resolves.toBeNull();
@@ -97,7 +97,7 @@ describe('CacheService', () => {
   // ─── set ──────────────────────────────────────────────────────────────────
 
   it('stores serialised value with EX ttl', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.set.mockResolvedValue('OK');
 
     await service.set('key', { x: 1 });
@@ -106,7 +106,7 @@ describe('CacheService', () => {
   });
 
   it('does not throw when redis.set rejects', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.set.mockRejectedValue(new Error('OOM'));
 
     await expect(service.set('key', {})).resolves.toBeUndefined();
@@ -115,7 +115,7 @@ describe('CacheService', () => {
   // ─── del ──────────────────────────────────────────────────────────────────
 
   it('deletes specified keys', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.del.mockResolvedValue(1);
 
     await service.del('k1', 'k2');
@@ -124,7 +124,7 @@ describe('CacheService', () => {
   });
 
   it('skips del() when no keys supplied', async () => {
-    simulateConnect(service);
+    simulateConnect();
     await service.del();
     expect(mockRedis.del).not.toHaveBeenCalled();
   });
@@ -132,7 +132,7 @@ describe('CacheService', () => {
   // ─── invalidatePattern ────────────────────────────────────────────────────
 
   it('scans and deletes all matching keys', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.scan
       .mockResolvedValueOnce(['5', ['graph:full', 'graph:filtered:x']])
       .mockResolvedValueOnce(['0', []]);
@@ -144,7 +144,7 @@ describe('CacheService', () => {
   });
 
   it('skips del when scan returns no keys', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.scan.mockResolvedValue(['0', []]);
 
     await service.invalidatePattern('graph:*');
@@ -160,14 +160,14 @@ describe('CacheService', () => {
   });
 
   it('returns true when ping succeeds', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.ping.mockResolvedValue('PONG');
 
     expect(await service.ping()).toBe(true);
   });
 
   it('returns false and marks unavailable when ping throws', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.ping.mockRejectedValue(new Error('timeout'));
 
     expect(await service.ping()).toBe(false);
@@ -186,7 +186,7 @@ describe('CacheService', () => {
   });
 
   it('increments and sets TTL on first write', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.incr.mockResolvedValue(1);
     mockRedis.expire.mockResolvedValue(1);
 
@@ -198,7 +198,7 @@ describe('CacheService', () => {
   });
 
   it('does not reset TTL on subsequent increments', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.incr.mockResolvedValue(5);
 
     await service.increment('ratelimit:ip', 60);
@@ -207,7 +207,7 @@ describe('CacheService', () => {
   });
 
   it('returns 0 and does not throw when redis.incr rejects', async () => {
-    simulateConnect(service);
+    simulateConnect();
     mockRedis.incr.mockRejectedValue(new Error('READONLY'));
 
     await expect(service.increment('ratelimit:ip', 60)).resolves.toBe(0);

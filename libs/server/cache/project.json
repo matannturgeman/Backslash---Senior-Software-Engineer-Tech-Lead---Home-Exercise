@@ -1,0 +1,25 @@
+{
+  "name": "server-cache",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/server/cache/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:infrastructure"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/server/cache/**/*.ts"]
+      }
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/server-cache",
+        "main": "libs/server/cache/src/index.ts",
+        "tsConfig": "libs/server/cache/tsconfig.lib.json",
+        "assets": []
+      }
+    }
+  }
+}
