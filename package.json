@@ -5,6 +5,7 @@
   "scripts": {
     "dev:api": "nx serve api",
     "build:api": "nx build api",
+    "lint": "nx run-many -t lint",
     "test": "nx run-many -t test"
   },
   "private": true,

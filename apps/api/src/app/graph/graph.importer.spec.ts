@@ -77,14 +77,18 @@ describe('GraphImporter', () => {
 
   // ─── dangling edge detection ─────────────────────────────────────────────────
 
-  it('throws on dangling edges (edge.to not in nodes)', async () => {
+  it('warns and skips dangling edges (edge.to not in nodes) instead of aborting', async () => {
     const badLoader = {
       ...mockLoader,
       fileHash: 'new-hash',
-      edges: [{ from: 'svc-a', to: 'ghost' }],
+      edges: [
+        { from: 'svc-a', to: 'ghost' }, // dangling — 'ghost' not in nodes
+        { from: 'svc-a', to: 'db' },    // valid
+      ],
     };
 
-    mockNeo4j.run.mockResolvedValue({ records: [] });
+    mockNeo4j.run.mockResolvedValueOnce({ records: [] }) // hash check
+               .mockResolvedValue(undefined);            // constraint run
 
     const module = await Test.createTestingModule({
       providers: [
@@ -96,8 +100,10 @@ describe('GraphImporter', () => {
     }).compile();
     const imp = module.get(GraphImporter);
 
-    await expect(imp.onModuleInit()).rejects.toThrow(/Seed aborted/);
-    await expect(imp.onModuleInit()).rejects.toThrow(/"svc-a" → "ghost"/);
+    // Should not throw — dangling edges are warned and skipped
+    await expect(imp.onModuleInit()).resolves.toBeUndefined();
+    // Seeding still ran (writeTransaction called)
+    expect(mockNeo4j.writeTransaction).toHaveBeenCalledTimes(1);
   });
 
   // ─── retry logic ─────────────────────────────────────────────────────────────
