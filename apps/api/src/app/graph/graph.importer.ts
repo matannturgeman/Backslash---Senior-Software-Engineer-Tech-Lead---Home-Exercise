@@ -80,10 +80,14 @@ export class GraphImporter implements OnModuleInit {
 
   private async seed() {
     const nodeNames = this.loader.nodes;
-    const dangling = this.loader.edges.filter(e => !nodeNames.has(e.to));
+    const validEdges: typeof this.loader.edges = [];
+    const dangling: typeof this.loader.edges = [];
+    for (const e of this.loader.edges) {
+      (nodeNames.has(e.from) && nodeNames.has(e.to) ? validEdges : dangling).push(e);
+    }
     if (dangling.length > 0) {
-      throw new Error(
-        `Seed aborted — ${dangling.length} edge(s) reference unknown nodes: ` +
+      this.logger.warn(
+        `Skipping ${dangling.length} edge(s) that reference unknown nodes: ` +
         dangling.map(e => `"${e.from}" → "${e.to}"`).join(', ')
       );
     }
@@ -122,7 +126,7 @@ export class GraphImporter implements OnModuleInit {
         `UNWIND $edges AS e
          MATCH (a:Node {name: e.from}), (b:Node {name: e.to})
          CREATE (a)-[:CALLS]->(b)`,
-        { edges: this.loader.edges },
+        { edges: validEdges },
       );
 
       await tx.run('MERGE (m:GraphMeta) SET m.hash = $hash', {
