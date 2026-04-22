@@ -19,28 +19,39 @@ async function buildGuard(nodeEnv: string | undefined): Promise<AppThrottlerGuar
 }
 
 describe('AppThrottlerGuard', () => {
+  // Compile all guards in parallel so total wait ≈ one compilation, not four.
+  let devGuard: AppThrottlerGuard;
+  let testGuard: AppThrottlerGuard;
+  let undefGuard: AppThrottlerGuard;
+  let prodGuard: AppThrottlerGuard;
+
+  beforeAll(async () => {
+    [devGuard, testGuard, undefGuard, prodGuard] = await Promise.all([
+      buildGuard('development'),
+      buildGuard('test'),
+      buildGuard(undefined),
+      buildGuard('production'),
+    ]);
+  });
+
   it('skips throttling when NODE_ENV is development', async () => {
-    const guard = await buildGuard('development');
-    await expect(guard.canActivate(fakeContext)).resolves.toBe(true);
+    await expect(devGuard.canActivate(fakeContext)).resolves.toBe(true);
   });
 
   it('skips throttling when NODE_ENV is test', async () => {
-    const guard = await buildGuard('test');
-    await expect(guard.canActivate(fakeContext)).resolves.toBe(true);
+    await expect(testGuard.canActivate(fakeContext)).resolves.toBe(true);
   });
 
   it('skips throttling when NODE_ENV is undefined', async () => {
-    const guard = await buildGuard(undefined);
-    await expect(guard.canActivate(fakeContext)).resolves.toBe(true);
+    await expect(undefGuard.canActivate(fakeContext)).resolves.toBe(true);
   });
 
   it('delegates to ThrottlerGuard when NODE_ENV is production', async () => {
-    const guard = await buildGuard('production');
     const spy = jest
       .spyOn(ThrottlerGuard.prototype, 'canActivate')
       .mockResolvedValue(true);
 
-    const result = await guard.canActivate(fakeContext);
+    const result = await prodGuard.canActivate(fakeContext);
 
     expect(spy).toHaveBeenCalledWith(fakeContext);
     expect(result).toBe(true);
