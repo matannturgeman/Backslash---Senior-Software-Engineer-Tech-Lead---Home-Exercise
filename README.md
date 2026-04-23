@@ -26,6 +26,8 @@ node dist/api/main.js
 API: `http://localhost:3000/api`
 Swagger docs: `http://localhost:3000/docs`
 
+**Live deployment:** https://backslash-senior-software-engineer-tech.onrender.com
+
 ---
 
 ## API
