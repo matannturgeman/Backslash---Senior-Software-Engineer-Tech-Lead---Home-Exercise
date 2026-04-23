@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { HealthController } from './health.controller.js';
-import { GRAPH_REPOSITORY } from '../neo4j/neo4j.interface.js';
+import { GRAPH_REPOSITORY } from '@libs/server-neo4j';
 import { CACHE_SERVICE } from '@libs/server-cache';
 
 const mockNeo4j = { run: jest.fn() };

@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Graph, GraphEdge, GraphNode } from '@libs/shared-types';
-import { CacheService } from '../cache/cache.service.js';
+import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
+import { GRAPH_REPOSITORY, type IGraphRepository } from '@libs/server-neo4j';
 import { AVAILABLE_FILTERS, filterRegistry } from '../filters/filter.registry.js';
 import { CACHE_KEY_FULL_GRAPH, CACHE_KEY_FILTERED_PREFIX } from './graph.cache-keys.js';
 import { graphNodeSchema } from './graph.loader.js';
-import { Neo4jService } from '../neo4j/neo4j.service.js';
 
 // Neo4j path matching uses relationship-uniqueness by default (no relationship
 // repeated), but nodes can repeat in cyclic graphs. The ALL() clause enforces
@@ -15,9 +15,9 @@ const NODE_UNIQUENESS = 'ALL(n IN nodes(p) WHERE single(x IN nodes(p) WHERE x = 
 @Injectable()
 export class GraphService {
   constructor(
-    private readonly neo4j: Neo4jService,
+    @Inject(GRAPH_REPOSITORY) private readonly graphRepo: IGraphRepository,
     private readonly config: ConfigService,
-    private readonly cache: CacheService,
+    @Inject(CACHE_SERVICE) private readonly cache: ICacheService,
   ) {}
 
   async getFullGraph(): Promise<Graph> {
@@ -25,8 +25,8 @@ export class GraphService {
     if (cached) return cached;
 
     const [nodesResult, edgesResult] = await Promise.all([
-      this.neo4j.run('MATCH (n:Node) RETURN n'),
-      this.neo4j.run(
+      this.graphRepo.run('MATCH (n:Node) RETURN n'),
+      this.graphRepo.run(
         'MATCH (a:Node)-[:CALLS]->(b:Node) RETURN a.name AS from, b.name AS to',
       ),
     ]);
@@ -61,7 +61,7 @@ export class GraphService {
     const maxDepth = this.positiveInt('MAX_PATH_DEPTH', 20);
     const maxPaths = this.positiveInt('MAX_RESULT_PATHS', 10_000);
     const maxNodes = this.positiveInt('MAX_RESPONSE_NODES', 5_000);
-    const result = await this.neo4j.run(
+    const result = await this.graphRepo.run(
       `MATCH p = (start:Node)-[:CALLS*1..${maxDepth}]->(end:Node)
        WHERE ${conditions.join(' AND ')}
        RETURN p LIMIT ${maxPaths}`,

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ThrottlerStorage, ThrottlerStorageRecord } from '@nestjs/throttler';
-import { CacheService } from '../cache/cache.service.js';
+import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
 
 /**
  * Redis-backed ThrottlerStorage for @nestjs/throttler.
@@ -11,7 +11,7 @@ import { CacheService } from '../cache/cache.service.js';
  */
 @Injectable()
 export class ThrottlerStorageRedisService implements ThrottlerStorage {
-  constructor(private readonly cache: CacheService) {}
+  constructor(@Inject(CACHE_SERVICE) private readonly cache: ICacheService) {}
 
   async increment(
     key: string,

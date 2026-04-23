@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { ThrottlerStorageRedisService } from './throttler-storage.service.js';
-import { CacheService } from '../cache/cache.service.js';
+import { CACHE_SERVICE } from '@libs/server-cache';
 
 const mockCache = { increment: jest.fn() };
 
@@ -12,7 +12,7 @@ describe('ThrottlerStorageRedisService', () => {
     const module = await Test.createTestingModule({
       providers: [
         ThrottlerStorageRedisService,
-        { provide: CacheService, useValue: mockCache },
+        { provide: CACHE_SERVICE, useValue: mockCache },
       ],
     }).compile();
     storage = module.get(ThrottlerStorageRedisService);

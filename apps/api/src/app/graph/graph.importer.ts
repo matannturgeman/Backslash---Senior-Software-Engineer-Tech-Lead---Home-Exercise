@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CacheService } from '../cache/cache.service.js';
-import { Neo4jService } from '../neo4j/neo4j.service.js';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
+import { GRAPH_REPOSITORY, type IGraphRepository } from '@libs/server-neo4j';
 import { CACHE_KEY_PATTERN_ALL } from './graph.cache-keys.js';
 import { GraphLoader } from './graph.loader.js';
 
@@ -10,8 +10,8 @@ export class GraphImporter implements OnModuleInit {
 
   constructor(
     private readonly loader: GraphLoader,
-    private readonly neo4j: Neo4jService,
-    private readonly cache: CacheService,
+    @Inject(GRAPH_REPOSITORY) private readonly graphRepo: IGraphRepository,
+    @Inject(CACHE_SERVICE) private readonly cache: ICacheService,
   ) {}
 
   async onModuleInit() {
@@ -21,7 +21,7 @@ export class GraphImporter implements OnModuleInit {
   private async initializeGraph() {
     const hash = this.loader.fileHash;
 
-    const stored = await this.neo4j.run(
+    const stored = await this.graphRepo.run(
       'MATCH (m:GraphMeta) RETURN m.hash AS hash',
     );
 
@@ -92,7 +92,7 @@ export class GraphImporter implements OnModuleInit {
       );
     }
 
-    await this.neo4j.writeTransaction(async (tx) => {
+    await this.graphRepo.writeTransaction(async (tx) => {
       await tx.run('MATCH (n:Node) DETACH DELETE n');
       await tx.run('MATCH (m:GraphMeta) DELETE m');
 
@@ -135,7 +135,7 @@ export class GraphImporter implements OnModuleInit {
     });
 
     // Constraint created outside transaction (DDL in Neo4j can't run inside write tx)
-    await this.neo4j.run(
+    await this.graphRepo.run(
       'CREATE CONSTRAINT node_name_unique IF NOT EXISTS FOR (n:Node) REQUIRE n.name IS UNIQUE',
     );
   }

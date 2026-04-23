@@ -1,9 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { GraphService } from './graph.service.js';
-import { Neo4jService } from '../neo4j/neo4j.service.js';
+import { GRAPH_REPOSITORY } from '@libs/server-neo4j';
 import { ConfigService } from '@nestjs/config';
-import { CacheService } from '../cache/cache.service.js';
+import { CACHE_SERVICE } from '@libs/server-cache';
 
 const mockNeo4j  = { run: jest.fn() };
 const mockCache  = { get: jest.fn().mockResolvedValue(null), set: jest.fn().mockResolvedValue(undefined) };
@@ -29,9 +29,9 @@ describe('GraphService', () => {
     const module = await Test.createTestingModule({
       providers: [
         GraphService,
-        { provide: Neo4jService,   useValue: mockNeo4j  },
-        { provide: ConfigService,  useValue: mockConfig  },
-        { provide: CacheService,   useValue: mockCache   },
+        { provide: GRAPH_REPOSITORY, useValue: mockNeo4j  },
+        { provide: ConfigService,    useValue: mockConfig  },
+        { provide: CACHE_SERVICE,    useValue: mockCache   },
       ],
     }).compile();
     service = module.get(GraphService);

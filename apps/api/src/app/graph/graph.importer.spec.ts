@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { GraphImporter } from './graph.importer.js';
 import { GraphLoader } from './graph.loader.js';
-import { Neo4jService } from '../neo4j/neo4j.service.js';
-import { CacheService } from '../cache/cache.service.js';
+import { GRAPH_REPOSITORY } from '@libs/server-neo4j';
+import { CACHE_SERVICE } from '@libs/server-cache';
 import { CACHE_KEY_PATTERN_ALL } from './graph.cache-keys.js';
 
 const HASH = 'abc123';
@@ -34,9 +34,9 @@ describe('GraphImporter', () => {
     const module = await Test.createTestingModule({
       providers: [
         GraphImporter,
-        { provide: GraphLoader,   useValue: mockLoader  },
-        { provide: Neo4jService,  useValue: mockNeo4j   },
-        { provide: CacheService,  useValue: mockCache   },
+        { provide: GraphLoader,      useValue: mockLoader  },
+        { provide: GRAPH_REPOSITORY, useValue: mockNeo4j   },
+        { provide: CACHE_SERVICE,    useValue: mockCache   },
       ],
     }).compile();
     importer = module.get(GraphImporter);
@@ -93,9 +93,9 @@ describe('GraphImporter', () => {
     const module = await Test.createTestingModule({
       providers: [
         GraphImporter,
-        { provide: GraphLoader,   useValue: badLoader  },
-        { provide: Neo4jService,  useValue: mockNeo4j  },
-        { provide: CacheService,  useValue: mockCache  },
+        { provide: GraphLoader,      useValue: badLoader  },
+        { provide: GRAPH_REPOSITORY, useValue: mockNeo4j  },
+        { provide: CACHE_SERVICE,    useValue: mockCache  },
       ],
     }).compile();
     const imp = module.get(GraphImporter);
