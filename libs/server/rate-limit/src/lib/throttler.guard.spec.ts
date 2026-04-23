@@ -2,7 +2,7 @@ import { ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AppThrottlerGuard } from './throttler.guard.js';
+import { AppThrottlerGuard } from './throttler.guard';
 
 const fakeContext = {} as ExecutionContext;
 

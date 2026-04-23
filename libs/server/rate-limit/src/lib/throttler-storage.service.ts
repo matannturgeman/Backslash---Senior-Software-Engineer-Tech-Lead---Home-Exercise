@@ -1,23 +1,24 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ThrottlerStorage, ThrottlerStorageRecord } from '@nestjs/throttler';
-import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
+import { CacheService } from '@libs/server-cache';
 
 /**
  * Redis-backed ThrottlerStorage for @nestjs/throttler.
  *
- * Delegates counting to ICacheService.increment() — fail-open when unavailable.
+ * Delegates counting to CacheService.increment() which uses Redis INCR + EXPIRE.
  * When Redis is unavailable, increment() returns 0 and this storage fails open
  * (isBlocked = false), so traffic is never blocked by cache unavailability.
  */
 @Injectable()
 export class ThrottlerStorageRedisService implements ThrottlerStorage {
-  constructor(@Inject(CACHE_SERVICE) private readonly cache: ICacheService) {}
+  constructor(private readonly cache: CacheService) {}
 
   async increment(
     key: string,
     ttl: number,
     limit: number,
     blockDuration: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const ttlSec = Math.max(1, Math.ceil(ttl / 1000));

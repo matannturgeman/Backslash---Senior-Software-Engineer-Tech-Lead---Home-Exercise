@@ -1,0 +1,19 @@
+{
+  "name": "server-rate-limit",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/server/rate-limit/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:infrastructure"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/server-rate-limit",
+        "main": "libs/server/rate-limit/src/index.ts",
+        "tsConfig": "libs/server/rate-limit/tsconfig.lib.json",
+        "assets": []
+      }
+    }
+  }
+}

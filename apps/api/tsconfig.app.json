@@ -16,7 +16,16 @@
   ],
   "references": [
     {
-      "path": "../../libs/shared/dto/tsconfig.lib.json"
+      "path": "../../libs/server/neo4j/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/server/cache/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/server/graph/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/server/rate-limit/tsconfig.lib.json"
     }
   ]
 }

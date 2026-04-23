@@ -6,8 +6,7 @@ import { CacheModule } from '@libs/server-cache';
 import { Neo4jModule } from '@libs/server-neo4j';
 import { GraphModule } from './graph/graph.module.js';
 import { HealthModule } from './health/health.module.js';
-import { AppThrottlerGuard } from './rate-limit/throttler.guard.js';
-import { ThrottlerStorageRedisService } from './rate-limit/throttler-storage.service.js';
+import { AppThrottlerGuard, ThrottlerStorageRedisService } from '@libs/server-rate-limit';
 
 @Module({
   imports: [
