@@ -24,7 +24,7 @@
     "paths": {
       "@libs/shared-types": ["libs/shared/types/src/index.ts"],
       "@libs/server-cache": ["libs/server/cache/src/index.ts"],
-      "@libs/server-neo4j": ["apps/api/src/app/neo4j/index.ts"],
+      "@libs/server-neo4j": ["libs/server/neo4j/src/index.ts"],
     },
   },
 }
