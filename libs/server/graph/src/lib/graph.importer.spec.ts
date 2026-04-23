@@ -23,6 +23,16 @@ const mockNeo4j = {
 };
 const mockCache = { invalidatePattern: jest.fn().mockResolvedValue(undefined) };
 
+const makeImporter = (loader = mockLoader) =>
+  Test.createTestingModule({
+    providers: [
+      GraphImporter,
+      { provide: GraphLoader,      useValue: loader   },
+      { provide: GRAPH_REPOSITORY, useValue: mockNeo4j },
+      { provide: CACHE_SERVICE,    useValue: mockCache  },
+    ],
+  }).compile().then(m => m.get(GraphImporter));
+
 describe('GraphImporter', () => {
   let importer: GraphImporter;
 
@@ -30,16 +40,7 @@ describe('GraphImporter', () => {
     jest.clearAllMocks();
     mockTx.run.mockResolvedValue(undefined);
     mockCache.invalidatePattern.mockResolvedValue(undefined);
-
-    const module = await Test.createTestingModule({
-      providers: [
-        GraphImporter,
-        { provide: GraphLoader,      useValue: mockLoader  },
-        { provide: GRAPH_REPOSITORY, useValue: mockNeo4j   },
-        { provide: CACHE_SERVICE,    useValue: mockCache   },
-      ],
-    }).compile();
-    importer = module.get(GraphImporter);
+    importer = await makeImporter();
   });
 
   // ─── hash-based skip ────────────────────────────────────────────────────────
@@ -90,15 +91,7 @@ describe('GraphImporter', () => {
     mockNeo4j.run.mockResolvedValueOnce({ records: [] }) // hash check
                .mockResolvedValue(undefined);            // constraint run
 
-    const module = await Test.createTestingModule({
-      providers: [
-        GraphImporter,
-        { provide: GraphLoader,      useValue: badLoader  },
-        { provide: GRAPH_REPOSITORY, useValue: mockNeo4j  },
-        { provide: CACHE_SERVICE,    useValue: mockCache  },
-      ],
-    }).compile();
-    const imp = module.get(GraphImporter);
+    const imp = await makeImporter(badLoader);
 
     // Should not throw — dangling edges are warned and skipped
     await expect(imp.onModuleInit()).resolves.toBeUndefined();

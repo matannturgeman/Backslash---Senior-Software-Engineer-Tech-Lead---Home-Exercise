@@ -5,7 +5,7 @@ import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
 /**
  * Redis-backed ThrottlerStorage for @nestjs/throttler.
  *
- * Delegates counting to CacheService.increment() which uses Redis INCR + EXPIRE.
+ * Delegates counting to ICacheService.increment() — fail-open when unavailable.
  * When Redis is unavailable, increment() returns 0 and this storage fails open
  * (isBlocked = false), so traffic is never blocked by cache unavailability.
  */
