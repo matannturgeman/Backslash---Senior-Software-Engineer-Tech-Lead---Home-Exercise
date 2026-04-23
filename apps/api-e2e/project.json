@@ -17,7 +17,7 @@
         "jestConfig": "apps/api-e2e/jest.config.cts",
         "passWithNoTests": true
       },
-      "dependsOn": ["api:build", "api:serve"]
+      "dependsOn": ["api:build"]
     }
   }
 }
