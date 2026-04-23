@@ -5,6 +5,6 @@ COPY . .
 
 RUN npm install -g pnpm
 RUN pnpm install --frozen-lockfile
-RUN NX_DAEMON=false pnpm nx build api --verbose
+RUN cd apps/api && npx webpack --mode production
 
 CMD ["node", "dist/apps/api/main.js"]
