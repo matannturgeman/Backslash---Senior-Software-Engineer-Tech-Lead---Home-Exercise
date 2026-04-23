@@ -6,7 +6,8 @@
     "dev:api": "nx serve api",
     "build:api": "nx build api",
     "lint": "nx run-many -t lint",
-    "test": "nx run-many -t test"
+    "test": "nx run-many -t test",
+    "test:e2e": "nx run api-e2e:e2e"
   },
   "private": true,
   "devDependencies": {

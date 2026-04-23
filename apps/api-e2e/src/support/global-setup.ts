@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import * as path from 'path';
 import { waitForPortOpen } from '@nx/node/utils';
 import { Neo4jContainer } from '@testcontainers/neo4j';
 import { RedisContainer } from '@testcontainers/redis';
@@ -28,8 +29,10 @@ module.exports = async function () {
 
   console.log('\nStarting API server for E2E tests...\n');
 
-  const server = spawn('node', ['dist/api/main.js'], {
-    cwd: process.cwd(),
+  // __dirname is apps/api-e2e/src/support — resolve 4 levels up to workspace root
+  const workspaceRoot = path.resolve(__dirname, '../../../../');
+  const server = spawn('node', [path.join(workspaceRoot, 'dist/api/main.js')], {
+    cwd: workspaceRoot,
     env: { ...process.env, PORT: String(port) },
     stdio: 'inherit',
   });
