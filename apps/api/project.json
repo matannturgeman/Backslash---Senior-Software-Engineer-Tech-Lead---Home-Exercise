@@ -8,12 +8,12 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "webpack --mode production",
+        "command": "npx webpack-cli --mode production",
         "cwd": "apps/api"
       },
       "configurations": {
         "development": {
-          "command": "webpack --mode development --watch",
+          "command": "npx webpack-cli --mode development --watch",
           "cwd": "apps/api"
         }
       }
