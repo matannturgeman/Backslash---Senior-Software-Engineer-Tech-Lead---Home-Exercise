@@ -16,13 +16,16 @@ export class CacheService implements ICacheService, OnModuleDestroy {
     this.ttl = config.get<number>('CACHE_TTL', 300);
 
     const redisUrl = config.get<string>('REDIS_URL');
-    this.client = redisUrl
-      ? new Redis(redisUrl, { lazyConnect: true })
-      : new Redis({
-          host: config.get<string>('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-          lazyConnect: true,
-        });
+    if (redisUrl) {
+      const redacted = redisUrl.replace(/:\/\/[^@]+@/, '://*****@');
+      this.logger.log(`Connecting to Redis via URL: ${redacted}`);
+      this.client = new Redis(redisUrl, { lazyConnect: true });
+    } else {
+      const host = config.get<string>('REDIS_HOST', 'localhost');
+      const port = config.get<number>('REDIS_PORT', 6379);
+      this.logger.log(`Connecting to Redis at ${host}:${port}`);
+      this.client = new Redis({ host, port, lazyConnect: true });
+    }
 
     this.client.on('connect', () => {
       this.available = true;
