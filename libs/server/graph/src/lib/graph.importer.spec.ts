@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { GraphImporter } from './graph.importer';
 import { GraphLoader } from './graph.loader';
-import { GRAPH_REPOSITORY } from '@libs/server-neo4j';
+import { GRAPH_REPOSITORY } from '@libs/server-graph';
 import { CACHE_SERVICE } from '@libs/server-cache';
 import { CACHE_KEY_PATTERN_ALL } from './graph.cache-keys';
 

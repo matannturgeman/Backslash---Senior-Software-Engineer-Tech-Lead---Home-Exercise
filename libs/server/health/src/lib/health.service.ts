@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
-import { GRAPH_REPOSITORY, type IGraphRepository } from '@libs/server-neo4j';
+import { GRAPH_REPOSITORY, type IGraphRepository } from '@libs/server-graph';
 
 type HealthStatus = 'up' | 'down';
 
@@ -12,7 +12,7 @@ export interface ServiceHealth {
 export interface HealthResponse {
   status: 'ok' | 'error';
   details: {
-    neo4j: ServiceHealth;
+    database: ServiceHealth;
     redis: ServiceHealth;
   };
 }
@@ -25,22 +25,22 @@ export class HealthService {
   ) {}
 
   async check(): Promise<HealthResponse> {
-    const [neo4j, redis] = await Promise.all([
-      this.checkNeo4j(),
+    const [database, redis] = await Promise.all([
+      this.checkDatabase(),
       this.checkRedis(),
     ]);
 
-    if (neo4j.status === 'down') {
+    if (database.status === 'down') {
       throw new HttpException(
-        { status: 'error', details: { neo4j, redis } },
+        { status: 'error', details: { database, redis } },
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
 
-    return { status: 'ok', details: { neo4j, redis } };
+    return { status: 'ok', details: { database, redis } };
   }
 
-  private async checkNeo4j(): Promise<ServiceHealth> {
+  private async checkDatabase(): Promise<ServiceHealth> {
     try {
       await this.graphRepo.run('RETURN 1');
       return { status: 'up' };

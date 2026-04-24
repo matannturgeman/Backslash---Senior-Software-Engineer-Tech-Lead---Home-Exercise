@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Graph, GraphEdge, GraphNode } from '@libs/shared-types';
 import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
-import { GRAPH_REPOSITORY, type IGraphRepository } from '@libs/server-neo4j';
+import { GRAPH_REPOSITORY, type IGraphRepository } from './graph.repository';
 import { AVAILABLE_FILTERS, filterRegistry } from './filter.registry';
 import { CACHE_KEY_FULL_GRAPH, CACHE_KEY_FILTERED_PREFIX } from './graph.cache-keys';
 import { graphNodeSchema } from './graph.loader';

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CACHE_SERVICE, type ICacheService } from '@libs/server-cache';
-import { GRAPH_REPOSITORY, type IGraphRepository } from '@libs/server-neo4j';
+import { GRAPH_REPOSITORY, type IGraphRepository } from './graph.repository';
 import { CACHE_KEY_PATTERN_ALL } from './graph.cache-keys';
 import { GraphLoader } from './graph.loader';
 
@@ -30,7 +30,7 @@ export class GraphImporter implements OnModuleInit {
       return;
     }
 
-    this.logger.log('Seeding Neo4j...');
+    this.logger.log('Seeding graph database...');
     await this.seed();
     await this.invalidateCache();
     this.logger.log(
@@ -50,12 +50,12 @@ export class GraphImporter implements OnModuleInit {
         // Only retry transient connectivity errors — fail fast on logic/query bugs
         if (!GraphImporter.isTransientError(err) || attempt === attempts) {
           this.logger.error(
-            `Neo4j unavailable after ${attempts} attempts — shutting down`,
+            `Database unavailable after ${attempts} attempts — shutting down`,
           );
           throw err;
         }
         this.logger.warn(
-          `Neo4j unavailable (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms…`,
+          `Database unavailable (attempt ${attempt}/${attempts}), retrying in ${delayMs}ms…`,
         );
         await new Promise((r) => setTimeout(r, delayMs));
       }

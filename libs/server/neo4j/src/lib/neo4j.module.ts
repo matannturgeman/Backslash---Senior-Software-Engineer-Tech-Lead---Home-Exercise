@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import neo4j from 'neo4j-driver';
 import { Neo4jService } from './neo4j.service.js';
 import { NEO4J_DRIVER } from './neo4j.constants.js';
-import { GRAPH_REPOSITORY } from './neo4j.interface.js';
+import { GRAPH_REPOSITORY } from '@libs/server-graph';
 
 @Global()
 @Module({

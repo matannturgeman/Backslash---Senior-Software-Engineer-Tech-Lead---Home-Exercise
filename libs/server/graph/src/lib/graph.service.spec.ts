@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { GraphService } from './graph.service';
-import { GRAPH_REPOSITORY } from '@libs/server-neo4j';
+import { GRAPH_REPOSITORY } from '@libs/server-graph';
 import { ConfigService } from '@nestjs/config';
 import { CACHE_SERVICE } from '@libs/server-cache';
 

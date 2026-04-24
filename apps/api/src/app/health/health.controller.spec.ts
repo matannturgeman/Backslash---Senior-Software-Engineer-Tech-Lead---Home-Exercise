@@ -20,7 +20,7 @@ describe('HealthController', () => {
   it('delegates to HealthService.check and returns its result', async () => {
     const response = {
       status: 'ok' as const,
-      details: { neo4j: { status: 'up' as const }, redis: { status: 'up' as const } },
+      details: { database: { status: 'up' as const }, redis: { status: 'up' as const } },
     };
     mockHealthService.check.mockResolvedValue(response);
 
@@ -30,7 +30,7 @@ describe('HealthController', () => {
 
   it('propagates HttpException from HealthService', async () => {
     const error = new HttpException(
-      { status: 'error', details: { neo4j: { status: 'down', error: 'gone' }, redis: { status: 'up' } } },
+      { status: 'error', details: { database: { status: 'down', error: 'gone' }, redis: { status: 'up' } } },
       HttpStatus.SERVICE_UNAVAILABLE,
     );
     mockHealthService.check.mockRejectedValue(error);
