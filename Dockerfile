@@ -3,8 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 COPY . .
 
-RUN npm install -g pnpm
-RUN pnpm install --frozen-lockfile
-RUN cd apps/api && /app/node_modules/.bin/webpack --mode production
+RUN npm install --legacy-peer-deps
+RUN NX_DAEMON=false npx nx build api
 
 CMD ["node", "dist/apps/api/main.js"]
