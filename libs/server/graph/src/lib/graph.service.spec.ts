@@ -166,6 +166,29 @@ describe('GraphService', () => {
     });
   });
 
+  // ─── mapNode JSON.parse branches ────────────────────────────────────────────
+
+  describe('mapNode with serialized vulnerabilities and metadata', () => {
+    it('parses serialized vulnerabilities and metadata from neo4j properties', async () => {
+      mockNeo4j.run
+        .mockResolvedValueOnce({
+          records: [
+            makeNodeRecord({
+              name: 'svc-vuln',
+              kind: 'service',
+              vulnerabilities: '[{"file":"x.ts","severity":"high","message":"CVE-1"}]',
+              metadata: '{"team":"backend"}',
+            }),
+          ],
+        })
+        .mockResolvedValueOnce({ records: [] });
+
+      const graph = await service.getFullGraph();
+      expect(graph.nodes[0].vulnerabilities).toHaveLength(1);
+      expect(graph.nodes[0].metadata).toEqual({ team: 'backend' });
+    });
+  });
+
   // ─── positiveInt (via config behaviour) ────────────────────────────────────
 
   describe('positiveInt fallback', () => {

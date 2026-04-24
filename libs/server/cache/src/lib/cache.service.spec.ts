@@ -220,4 +220,55 @@ describe('CacheService', () => {
     await service.onModuleDestroy();
     expect(mockRedis.quit).toHaveBeenCalledTimes(1);
   });
+
+  // ─── constructor REDIS_URL path ───────────────────────────────────────────
+
+  it('constructs with REDIS_URL when provided', async () => {
+    const urlConfig = {
+      get: jest.fn((key: string, def?: unknown) => {
+        if (key === 'REDIS_URL') return 'rediss://:secret@host.example.com:6380';
+        return def;
+      }),
+    };
+    const module = await Test.createTestingModule({
+      providers: [
+        CacheService,
+        { provide: ConfigService, useValue: urlConfig },
+      ],
+    }).compile();
+    const svc = module.get(CacheService);
+    await svc.onModuleDestroy();
+    expect(urlConfig.get).toHaveBeenCalledWith('REDIS_URL');
+  });
+
+  // ─── error event handler ──────────────────────────────────────────────────
+
+  it('logs warning and marks unavailable when error fires after connect', async () => {
+    simulateConnect();
+    const errorCall = mockRedis.on.mock.calls.find(([event]: [string]) => event === 'error');
+    const errorHandler = errorCall![1] as (err: Error) => void;
+    errorHandler(new Error('connection lost'));
+
+    // available is now false — get should bypass redis
+    mockRedis.get.mockResolvedValue('{"x":1}');
+    const result = await service.get('key');
+    expect(result).toBeNull();
+    expect(mockRedis.get).not.toHaveBeenCalled();
+  });
+
+  // ─── del error path ───────────────────────────────────────────────────────
+
+  it('does not throw when del rejects', async () => {
+    simulateConnect();
+    mockRedis.del.mockRejectedValue(new Error('write error'));
+    await expect(service.del('k1')).resolves.toBeUndefined();
+  });
+
+  // ─── invalidatePattern error path ────────────────────────────────────────
+
+  it('does not throw when scan rejects in invalidatePattern', async () => {
+    simulateConnect();
+    mockRedis.scan.mockRejectedValue(new Error('scan error'));
+    await expect(service.invalidatePattern('graph:*')).resolves.toBeUndefined();
+  });
 });

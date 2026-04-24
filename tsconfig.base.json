@@ -23,6 +23,7 @@
     "target": "es2022",
     "paths": {
       "@libs/shared-types": ["libs/shared/types/src/index.ts"],
+      "@libs/shared-dto": ["libs/shared/dto/src/index.ts"],
       "@libs/server-cache": ["libs/server/cache/src/index.ts"],
       "@libs/server-neo4j": ["libs/server/neo4j/src/index.ts"],
       "@libs/server-graph": ["libs/server/graph/src/index.ts"],

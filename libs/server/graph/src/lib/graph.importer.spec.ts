@@ -178,4 +178,33 @@ describe('GraphImporter', () => {
     }).isTransientError(new Error('Something went wrong'));
     expect(isTransient).toBe(false);
   });
+
+  // ─── metadata serialization ───────────────────────────────────────────────
+
+  it('serializes node metadata when seeding', async () => {
+    const loaderWithMeta = {
+      fileHash: 'meta-hash',
+      nodes: new Map([
+        ['svc-a', { name: 'svc-a', kind: 'service', metadata: { team: 'alpha' } }],
+        ['db',    { name: 'db',    kind: 'rds' }],
+      ]),
+      edges: [{ from: 'svc-a', to: 'db' }],
+    };
+
+    mockNeo4j.run
+      .mockResolvedValueOnce({ records: [] })  // hash check → no match → seed
+      .mockResolvedValue(undefined);           // constraint run
+
+    const imp = await makeImporter(loaderWithMeta);
+    await imp.onModuleInit();
+
+    expect(mockNeo4j.writeTransaction).toHaveBeenCalledTimes(1);
+    const nodesCall = mockTx.run.mock.calls.find(
+      ([cypher]: [string]) => cypher.includes('UNWIND $nodes'),
+    );
+    expect(nodesCall).toBeDefined();
+    const { nodes } = nodesCall![1] as { nodes: Array<{ name: string; metadata: string | null }> };
+    const svcA = nodes.find((n) => n.name === 'svc-a');
+    expect(svcA!.metadata).toBe('{"team":"alpha"}');
+  });
 });

@@ -1,7 +1,8 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Graph } from '@libs/shared-types';
-import { AVAILABLE_FILTERS, FiltersDto, GraphDto, GraphService } from '@libs/server-graph';
+import { FiltersDto, GraphDto } from '@libs/shared-dto';
+import { AVAILABLE_FILTERS, GraphService } from '@libs/server-graph';
 
 @ApiTags('graph')
 @Controller('graph')

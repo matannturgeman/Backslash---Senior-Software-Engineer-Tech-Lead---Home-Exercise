@@ -4,6 +4,7 @@ export class VulnerabilityDto {
   @ApiProperty() file!: string;
   @ApiProperty({ enum: ['low', 'medium', 'high', 'critical'] }) severity!: string;
   @ApiProperty() message!: string;
+  @ApiProperty({ required: false }) metadata?: Record<string, unknown>;
 }
 
 export class GraphNodeDto {
@@ -13,6 +14,7 @@ export class GraphNodeDto {
   @ApiProperty({ type: [VulnerabilityDto], required: false }) vulnerabilities?: VulnerabilityDto[];
   @ApiProperty({ required: false }) language?: string;
   @ApiProperty({ required: false }) path?: string;
+  @ApiProperty({ required: false }) metadata?: Record<string, unknown>;
 }
 
 export class GraphEdgeDto {

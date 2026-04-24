@@ -41,4 +41,28 @@ describe('GraphLoader', () => {
       { from: 'svc-b', to: 'db' },
     ]);
   });
+
+  it('throws when readFileSync fails', async () => {
+    mockReadFileSync.mockImplementation(() => { throw new Error('ENOENT: no such file'); });
+    const m = await Test.createTestingModule({ providers: [GraphLoader] }).compile();
+    const errLoader = m.get(GraphLoader);
+    expect(() => errLoader.onModuleInit()).toThrow('Failed to read graph file');
+  });
+
+  it('throws when file content is not valid JSON', async () => {
+    mockReadFileSync.mockReturnValue('not { valid json {{');
+    const m = await Test.createTestingModule({ providers: [GraphLoader] }).compile();
+    const errLoader = m.get(GraphLoader);
+    expect(() => errLoader.onModuleInit()).toThrow('Graph file is not valid JSON');
+  });
+
+  it('throws when JSON fails schema validation', async () => {
+    mockReadFileSync.mockReturnValue(JSON.stringify({
+      nodes: [{ name: '', kind: 'unknown-kind' }],
+      edges: [],
+    }));
+    const m = await Test.createTestingModule({ providers: [GraphLoader] }).compile();
+    const errLoader = m.get(GraphLoader);
+    expect(() => errLoader.onModuleInit()).toThrow('Graph file failed schema validation');
+  });
 });
