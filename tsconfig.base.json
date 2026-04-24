@@ -27,6 +27,7 @@
       "@libs/server-neo4j": ["libs/server/neo4j/src/index.ts"],
       "@libs/server-graph": ["libs/server/graph/src/index.ts"],
       "@libs/server-rate-limit": ["libs/server/rate-limit/src/index.ts"],
+      "@libs/server-health": ["libs/server/health/src/index.ts"],
     },
   },
 }
