@@ -7,8 +7,8 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
   moduleNameMapper: {
-    '^@libs/server-cache$':  '<rootDir>/../cache/src/index.ts',
-    '^@libs/server-graph$':  '<rootDir>/../graph/src/index.ts',
+    '^@libs/server-cache$': '<rootDir>/../cache/src/index.ts',
+    '^@libs/server-graph$': '<rootDir>/../graph/src/index.ts',
   },
   passWithNoTests: true,
   coverageDirectory: '../../../coverage/libs/server-health',
