@@ -256,6 +256,35 @@ describe('CacheService', () => {
     expect(mockRedis.get).not.toHaveBeenCalled();
   });
 
+  it('silently ignores error event when not yet connected (available=false)', () => {
+    // available starts false — error handler should be a no-op (no warn, no state change)
+    const errorCall = mockRedis.on.mock.calls.find(([event]: [string]) => event === 'error');
+    const errorHandler = errorCall![1] as (err: Error) => void;
+    // Must not throw and must leave available=false
+    expect(() => errorHandler(new Error('pre-connect error'))).not.toThrow();
+  });
+
+  // ─── invalidatePattern when unavailable ───────────────────────────────────
+
+  it('skips invalidatePattern when not connected', async () => {
+    // available=false — should return immediately without calling scan
+    await service.invalidatePattern('graph:*');
+    expect(mockRedis.scan).not.toHaveBeenCalled();
+  });
+
+  // ─── connect catch arrow function ─────────────────────────────────────────
+
+  it('silently suppresses connect failure via catch', async () => {
+    mockRedis.connect.mockRejectedValueOnce(new Error('initial connect failed'));
+    const module = await Test.createTestingModule({
+      providers: [CacheService, { provide: ConfigService, useValue: mockConfig }],
+    }).compile();
+    const svc = module.get(CacheService);
+    // Yield to microtask queue so the .catch(() => undefined) callback fires
+    await Promise.resolve();
+    await svc.onModuleDestroy();
+  });
+
   // ─── del error path ───────────────────────────────────────────────────────
 
   it('does not throw when del rejects', async () => {

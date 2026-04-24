@@ -8,4 +8,5 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'html'],
   passWithNoTests: true,
   coverageDirectory: '../../../coverage/libs/server-cache',
+  coverageProvider: 'v8',
 };
