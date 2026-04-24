@@ -8,7 +8,6 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'html'],
   moduleNameMapper: {
     '^@libs/server-cache$': '<rootDir>/../cache/src/index.ts',
-    '^@libs/server-neo4j$': '<rootDir>/../neo4j/src/index.ts',
     '^@libs/shared-types$': '<rootDir>/../../../libs/shared/types/src/index.ts',
   },
   passWithNoTests: true,
