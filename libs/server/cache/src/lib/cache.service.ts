@@ -15,11 +15,14 @@ export class CacheService implements ICacheService, OnModuleDestroy {
   constructor(config: ConfigService) {
     this.ttl = config.get<number>('CACHE_TTL', 300);
 
-    this.client = new Redis({
-      host: config.get<string>('REDIS_HOST', 'localhost'),
-      port: config.get<number>('REDIS_PORT', 6379),
-      lazyConnect: true,
-    });
+    const redisUrl = config.get<string>('REDIS_URL');
+    this.client = redisUrl
+      ? new Redis(redisUrl, { lazyConnect: true })
+      : new Redis({
+          host: config.get<string>('REDIS_HOST', 'localhost'),
+          port: config.get<number>('REDIS_PORT', 6379),
+          lazyConnect: true,
+        });
 
     this.client.on('connect', () => {
       this.available = true;
